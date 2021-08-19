@@ -1,6 +1,8 @@
+from typing import ContextManager
 import discord
 from discord.ext import commands
 
+from discord import VoiceClient
 import youtube_dl
 
 
@@ -8,23 +10,44 @@ class music_cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # Event check exist
+    async def check_exist(self, ctx):
+        name = str(ctx.author).split('#')[0]
+        if not ctx.author.voice:
+            await ctx.send(f"{name} ты не в голосовом канале ⁉")
+            return False
+        return True
+
     # Command join
     @commands.command()
     async def join(self, ctx):
-        if not ctx.author.voice:
-            await ctx.send("Ты не в голосовом канале ⁉")
-        else:
-            channel = ctx.author.voice.channel
-            await channel.connect()
+        name = str(ctx.author).split('#')[0]
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.check_exist(ctx):
+            return
+        if isinstance(voice_client, VoiceClient) and voice_client.is_connected():
+            await ctx.send(f"{name} я уже подключен, в глазки долбишься ⁉")
+            return
+        channel = ctx.author.voice.channel
+        await channel.connect()
 
     # Command disconnect
     @commands.command()
     async def disconnect(self, ctx):
+        name = str(ctx.author).split('#')[0]
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.check_exist(ctx):
+            return
+        if voice_client is None:
+            await ctx.send(f"{name} я уже отключен, в глазки долбишься ⁉")
+            return
         await ctx.voice_client.disconnect()
 
     # Command play
     @commands.command()
     async def play(self, ctx, url):
+        if not await self.check_exist(ctx):
+            return
         ctx.voice_client.stop()
         FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
@@ -41,19 +64,27 @@ class music_cog(commands.Cog):
     @commands.command()
     async def pause(self, ctx):
         name = str(ctx.author).split('#')[0]
-        try:
-            ctx.voice_client.pause()
-            await ctx.send(f"{name} поставил паузу ⏸")
-        except:
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.check_exist(ctx):
+            return
+        if not voice_client.is_playing():
             await ctx.send(f"{name} я сейчас не играю музыку ⁉")
+            return
+        ctx.voice_client.pause()
+        await ctx.send(f"{name} поставил паузу ⏸")
 
     # Command resume
     @commands.command()
     async def resume(self, ctx):
         name = str(ctx.author).split('#')[0]
-        try:
-            ctx.voice_client.resume()
-            await ctx.send(f"{name} продолжил песню ⏯")
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.check_exist(ctx):
+            return
+        if not voice_client.is_paused():
+            await ctx.send(f"{name} ты сначала поставь на паузу, а потом меня вызывай ⁉")
+            return
+        ctx.voice_client.resume()
+        await ctx.send(f"{name} продолжил песню ⏯")
         except:
             await ctx.send(f"{name} я сейчас не играю музыку ⁉")
 

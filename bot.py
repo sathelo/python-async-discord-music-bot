@@ -19,10 +19,4 @@ async def bots(ctx):
     await ctx.send('На месте! ✅')
 
 
-# Commands
-@bot.command()
-async def patch(ctx):
-    await ctx.send('patch 1.1.3')
-
-
 bot.run(TOKEN)
