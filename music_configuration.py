@@ -1,30 +1,52 @@
-from typing import ContextManager
 import discord
-from discord.ext import commands
-
-from youtube_dl.utils import DownloadError
-from discord import VoiceClient
 import youtube_dl
+from discord import VoiceClient
+from discord.ext import commands
+from discord.ext.commands import Context
+from youtube_dl.utils import DownloadError
 
 
-class music_cog(commands.Cog):
+class MusicCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Event check exist
-    async def check_exist(self, ctx):
-        name = str(ctx.author).split('#')[0]
-        if not ctx.author.voice:
-            await ctx.send(f"{name} ты не в голосовом канале ⁉")
-            return False
-        return True
+    async def __check_access(self, ctx: Context) -> bool:
+        """ Проверка доступа к командам
 
-    # Command join
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+
+        Returns:
+            bool: True - если пользователь в голосов чате
+        """
+        name = await self.__get_username(ctx)
+        if ctx.author.voice:
+            return True
+
+        await ctx.send(f"{name} ты не в голосовом канале ⁉")
+        return False
+
+    async def __get_username(self, ctx: Context) -> str:
+        """ Получить имя пользователя
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+
+        Returns:
+            str: Для обычных пользователей это просто их имя пользователя, но если у них есть псевдоним, специфичный для гильдии, он возвращается.
+        """
+        return ctx.author.display_name
+
     @commands.command()
-    async def join(self, ctx):
-        name = str(ctx.author).split('#')[0]
+    async def join(self, ctx: Context):
+        """ Присоединение в голосовой в чат
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+        if not await self.__check_access(ctx):
             return
         if isinstance(voice_client, VoiceClient) and voice_client.is_connected():
             await ctx.send(f"{name} я уже подключен, в глазки долбишься ⁉")
@@ -32,25 +54,34 @@ class music_cog(commands.Cog):
         channel = ctx.author.voice.channel
         await channel.connect()
 
-    # Command disconnect
     @commands.command()
-    async def disconnect(self, ctx):
-        name = str(ctx.author).split('#')[0]
+    async def disconnect(self, ctx: Context):
+        """ Отключение из голосового в чат
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+        if not await self.__check_access(ctx):
             return
         if voice_client is None:
             await ctx.send(f"{name} я уже отключен, в глазки долбишься ⁉")
             return
-        await ctx.voice_client.disconnect()
+        await voice_client.disconnect()
 
-    # Command play
     @commands.command()
-    async def play(self, ctx, url):
-        name = str(ctx.author).split('#')[0]
-        voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+    async def play(self, ctx: Context, url: str):
+        """ Запуск youtube клипа по ссылке
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+            url (str): Ссылка на youtube клип
+        """
+        if not await self.__check_access(ctx):
             return
+        name = await self.__get_username(ctx)
+        voice_client: VoiceClient = ctx.voice_client
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
@@ -68,12 +99,16 @@ class music_cog(commands.Cog):
         except DownloadError:
             await ctx.send(f'{name} ты не передал сыллку ⁉')
 
-    # Command pause
     @commands.command()
-    async def pause(self, ctx):
-        name = str(ctx.author).split('#')[0]
+    async def pause(self, ctx: Context):
+        """ Приостановить youtube клип
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+        if not await self.__check_access(ctx):
             return
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
@@ -81,15 +116,19 @@ class music_cog(commands.Cog):
         if not voice_client.is_playing():
             await ctx.send(f"{name} я сейчас не играю музыку ⁉")
             return
-        ctx.voice_client.pause()
+        voice_client.pause()
         await ctx.send(f"{name} поставил паузу ⏸")
 
-    # Command resume
     @commands.command()
-    async def resume(self, ctx):
-        name = str(ctx.author).split('#')[0]
+    async def resume(self, ctx: Context):
+        """ Возобновить youtube клип
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+        if not await self.__check_access(ctx):
             return
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
@@ -97,15 +136,19 @@ class music_cog(commands.Cog):
         if not voice_client.is_paused():
             await ctx.send(f"{name} ты сначала поставь на паузу, а потом меня вызывай ⁉")
             return
-        ctx.voice_client.resume()
+        voice_client.resume()
         await ctx.send(f"{name} продолжил песню ⏯")
 
-    # Command skip
     @commands.command()
-    async def skip(self, ctx):
-        name = str(ctx.author).split('#')[0]
+    async def skip(self, ctx: Context):
+        """ Пропустить youtube клип
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
-        if not await self.check_exist(ctx):
+        if not await self.__check_access(ctx):
             return
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
@@ -113,9 +156,9 @@ class music_cog(commands.Cog):
         if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
             await ctx.send(f'{name} песен больше не осталось, может скипнуть тебя ⁉')
             return
-        ctx.voice_client.stop()
+        voice_client.stop()
         await ctx.send(f"{name} скипнул песню 💨")
 
 
 def setup(bot):
-    bot.add_cog(music_cog(bot))
+    bot.add_cog(MusicCog(bot))
