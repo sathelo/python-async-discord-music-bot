@@ -85,8 +85,19 @@ class music_cog(commands.Cog):
             return
         ctx.voice_client.resume()
         await ctx.send(f"{name} продолжил песню ⏯")
-        except:
-            await ctx.send(f"{name} я сейчас не играю музыку ⁉")
+
+    # Command skip
+    @commands.command()
+    async def skip(self, ctx):
+        name = str(ctx.author).split('#')[0]
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.check_exist(ctx):
+            return
+        if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
+            await ctx.send(f'{name} песен больше не осталось, может скипнуть тебя ⁉')
+            return
+        ctx.voice_client.stop()
+        await ctx.send(f"{name} скипнул песню 💨")
 
 
 def setup(bot):
