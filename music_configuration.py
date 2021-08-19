@@ -1,8 +1,9 @@
 import discord
 import youtube_dl
+from discord import VoiceClient
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import VoiceClient
+from youtube_dl.utils import DownloadError
 
 
 class MusicCog(commands.Cog):
@@ -53,7 +54,6 @@ class MusicCog(commands.Cog):
         channel = ctx.author.voice.channel
         await channel.connect()
 
-    # Command disconnect
     @commands.command()
     async def disconnect(self, ctx: Context):
         """ Отключение из голосового в чат
@@ -70,7 +70,6 @@ class MusicCog(commands.Cog):
             return
         await voice_client.disconnect()
 
-    # Command play
     @commands.command()
     async def play(self, ctx: Context, url: str):
         """ Запуск youtube клипа по ссылке
@@ -81,17 +80,24 @@ class MusicCog(commands.Cog):
         """
         if not await self.__check_access(ctx):
             return
+        name = await self.__get_username(ctx)
+        voice_client: VoiceClient = ctx.voice_client
+        if voice_client is None:
+            await ctx.send(f'{name} будь добр напиши !join ⁉')
+            return
         ctx.voice_client.stop()
         FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         YDL_OPTIONS = {'format': "bestaudio"}
         vc = ctx.voice_client
-
-        with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
-            url2 = info['formats'][0]['url']
-            source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
-            vc.play(source)
+        try:
+            with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+                info = ydl.extract_info(url, download=False)
+                url2 = info['formats'][0]['url']
+                source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+                vc.play(source)
+        except DownloadError:
+            await ctx.send(f'{name} ты не передал сыллку ⁉')
 
     @commands.command()
     async def pause(self, ctx: Context):
@@ -103,6 +109,9 @@ class MusicCog(commands.Cog):
         name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
         if not await self.__check_access(ctx):
+            return
+        if voice_client is None:
+            await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
         if not voice_client.is_playing():
             await ctx.send(f"{name} я сейчас не играю музыку ⁉")
@@ -121,6 +130,9 @@ class MusicCog(commands.Cog):
         voice_client: VoiceClient = ctx.voice_client
         if not await self.__check_access(ctx):
             return
+        if voice_client is None:
+            await ctx.send(f'{name} будь добр напиши !join ⁉')
+            return
         if not voice_client.is_paused():
             await ctx.send(f"{name} ты сначала поставь на паузу, а потом меня вызывай ⁉")
             return
@@ -137,6 +149,9 @@ class MusicCog(commands.Cog):
         name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
         if not await self.__check_access(ctx):
+            return
+        if voice_client is None:
+            await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
         if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
             await ctx.send(f'{name} песен больше не осталось, может скипнуть тебя ⁉')
