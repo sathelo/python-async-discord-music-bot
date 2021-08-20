@@ -1,4 +1,5 @@
 import discord
+from discord.ext.commands.core import command
 import youtube_dl
 from discord import VoiceClient
 from discord.ext import commands
@@ -8,7 +9,38 @@ from youtube_dl.utils import DownloadError
 
 class MusicCog(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot = bot        
+        self.song_list = []
+        self.context = None
+
+    async def __playlist(self, ctx: Context = None):
+        """ Обработчик плейлиста
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        # Если передали контекс обновить его иначе оставить старый
+        if not ctx is None:
+            self.ctx = ctx
+
+        # Если контекста нет, то выходим
+        if self.ctx is None:
+            return
+
+        # Если нет voice_client, то выходим 
+        voice_client: VoiceClient = self.ctx.voice_client
+        if not isinstance(voice_client, VoiceClient):
+            return
+
+
+        # TODO: Сделать проверку и запуск музыки из очереди
+        if not voice_client.is_playing() and len(self.song_list):
+            url = self.song_list.pop(0)
+            voice_client.loop.create_task(self.play(self.ctx, url))
+
+
+        # Добавляем проверку в цикл событий еще раз
+        voice_client.loop.create_task(self.__playlist(self.ctx))
 
     async def __check_access(self, ctx: Context) -> bool:
         """ Проверка доступа к командам
@@ -78,10 +110,10 @@ class MusicCog(commands.Cog):
             ctx (Context): Представляет контекст, в котором вызывается команда.
             url (str): Ссылка на youtube клип
         """
-        if not await self.__check_access(ctx):
-            return
         name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
+        if not await self.__check_access(ctx):
+            return
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
@@ -96,8 +128,27 @@ class MusicCog(commands.Cog):
                 url2 = info['formats'][0]['url']
                 source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
                 vc.play(source)
+                await ctx.send('Сейчас играет - ' + info.get('title'))
+                await self.__playlist(ctx)
         except DownloadError:
             await ctx.send(f'{name} ты не передал сыллку ⁉')
+
+    @commands.command()
+    async def add_song(self, ctx: Context, url: str):
+        """ Добавление youtube клипа в очередь
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+            url (str): Ссылка на youtube клип
+        """
+        name = await self.__get_username(ctx)
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.__check_access(ctx):
+            return
+        if voice_client is None:
+            await ctx.send(f'{name} будь добр напиши !join ⁉')
+            return
+        self.song_list.append(url)
 
     @commands.command()
     async def pause(self, ctx: Context):
