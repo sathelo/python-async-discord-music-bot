@@ -10,10 +10,40 @@ from asyncio import sleep
 
 class MusicCog(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot        
+        self.bot = bot
         self.song_list = []
         self.context = None
         self.is_playlist = False
+        self.is_play = False
+
+    async def __play(self, ctx: Context, url: str):
+        """ Запуск youtube клипа
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+            url (str): Ссылка на youtube клип
+        """
+        while self.is_play:
+            await sleep(0.5)
+        self.is_play = True
+        voice_client: VoiceClient = ctx.voice_client
+        voice_client.stop()
+        try:
+            FFMPEG_OPTIONS = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+            YDL_OPTIONS = {'format': "bestaudio"}
+            with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+                info = ydl.extract_info(url, download=False)
+                url2 = info['formats'][0]['url']
+                source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+                voice_client.play(source)
+                await ctx.send('Сейчас играет - ' + info.get('title'))
+                if not self.is_playlist:
+                    await self.__playlist(ctx)
+        except:
+            raise
+        finally:
+            self.is_play = False
 
     async def __playlist(self, ctx: Context = None):
         """ Обработчик плейлиста
@@ -30,18 +60,19 @@ class MusicCog(commands.Cog):
         if self.ctx is None:
             return
 
-        # Если нет voice_client, то выходим 
+        # Если нет voice_client, то выходим
         voice_client: VoiceClient = self.ctx.voice_client
         if not isinstance(voice_client, VoiceClient):
             return
-        
+
         self.is_playlist = True
 
-        # TODO: Сделать проверку и запуск музыки из очереди
-        if not voice_client.is_playing() and len(self.song_list):
+        # Сделать проверку и запуск музыки из очереди
+        song_list_len = len(self.song_list)
+        if not voice_client.is_playing() and song_list_len:
             url = self.song_list.pop(0)
-            voice_client.loop.create_task(self.play(self.ctx, url))
-
+            voice_client.loop.create_task(self.__play(self.ctx, url))
+            await ctx.send(f'Песен осталось песен в очереди: {song_list_len}')
 
         # Добавляем проверку в цикл событий еще раз
         await sleep(1)
@@ -125,18 +156,8 @@ class MusicCog(commands.Cog):
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
         voice_client.stop()
-        FFMPEG_OPTIONS = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-        YDL_OPTIONS = {'format': "bestaudio"}
         try:
-            with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
-                url2 = info['formats'][0]['url']
-                source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
-                voice_client.play(source)
-                await ctx.send('Сейчас играет - ' + info.get('title'))
-                if not self.is_playlist:
-                    await self.__playlist(ctx)
+            voice_client.loop.create_task(self.__play(ctx, url))
         except DownloadError:
             await ctx.send(f'{name} ты не передал сыллку ⁉')
 
