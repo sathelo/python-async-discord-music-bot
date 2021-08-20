@@ -5,6 +5,7 @@ from discord import VoiceClient
 from discord.ext import commands
 from discord.ext.commands import Context
 from youtube_dl.utils import DownloadError
+from asyncio import sleep
 
 
 class MusicCog(commands.Cog):
@@ -12,6 +13,7 @@ class MusicCog(commands.Cog):
         self.bot = bot        
         self.song_list = []
         self.context = None
+        self.is_playlist = False
 
     async def __playlist(self, ctx: Context = None):
         """ Обработчик плейлиста
@@ -19,6 +21,7 @@ class MusicCog(commands.Cog):
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
         """
+
         # Если передали контекс обновить его иначе оставить старый
         if not ctx is None:
             self.ctx = ctx
@@ -31,7 +34,8 @@ class MusicCog(commands.Cog):
         voice_client: VoiceClient = self.ctx.voice_client
         if not isinstance(voice_client, VoiceClient):
             return
-
+        
+        self.is_playlist = True
 
         # TODO: Сделать проверку и запуск музыки из очереди
         if not voice_client.is_playing() and len(self.song_list):
@@ -40,6 +44,7 @@ class MusicCog(commands.Cog):
 
 
         # Добавляем проверку в цикл событий еще раз
+        await sleep(1)
         voice_client.loop.create_task(self.__playlist(self.ctx))
 
     async def __check_access(self, ctx: Context) -> bool:
@@ -93,6 +98,8 @@ class MusicCog(commands.Cog):
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
         """
+        self.is_playlist = False
+        self.song_list = []
         name = await self.__get_username(ctx)
         voice_client: VoiceClient = ctx.voice_client
         if not await self.__check_access(ctx):
@@ -117,19 +124,19 @@ class MusicCog(commands.Cog):
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
-        ctx.voice_client.stop()
+        voice_client.stop()
         FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         YDL_OPTIONS = {'format': "bestaudio"}
-        vc = ctx.voice_client
         try:
             with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
                 info = ydl.extract_info(url, download=False)
                 url2 = info['formats'][0]['url']
                 source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
-                vc.play(source)
+                voice_client.play(source)
                 await ctx.send('Сейчас играет - ' + info.get('title'))
-                await self.__playlist(ctx)
+                if not self.is_playlist:
+                    await self.__playlist(ctx)
         except DownloadError:
             await ctx.send(f'{name} ты не передал сыллку ⁉')
 
