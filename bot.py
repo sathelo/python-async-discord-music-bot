@@ -7,16 +7,18 @@ from os import environ
 
 load_dotenv()
 cogs = [music_configuration]
-bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
+
+activity = discord.Activity(
+    name='Music by Sathelo | !help',
+    type=discord.ActivityType.listening
+)
+bot = commands.Bot(
+    command_prefix='!',
+    activity=activity
+)
 
 for i in range(len(cogs)):
     cogs[i].setup(bot)
-
-
-# Events
-@bot.command()
-async def bots(ctx):
-    await ctx.send('На месте! ✅')
 
 
 # Get token
