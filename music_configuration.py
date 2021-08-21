@@ -16,6 +16,33 @@ class MusicCog(commands.Cog):
         self.is_playlist = False
         self.is_play = False
 
+    def __has_next(self, voice_client: VoiceClient) -> bool:
+        """Проверка переключения музыки
+
+        Args:
+            voice_client (VoiceClient): голосовой клиент
+
+        Returns:
+            bool: True - переключить музыку
+        """
+        # Если музыка играет
+        if voice_client.is_playing():
+            return False
+
+        # Если пустой список песен
+        if not len(self.song_list):
+            return False
+
+        # Если песня на пазуе
+        if voice_client.is_paused():
+            return False
+
+        # Если песня включается
+        if self.is_play:
+            return False
+
+        return True
+
     async def __play(self, ctx: Context, url: str):
         """ Запуск youtube клипа
 
@@ -51,7 +78,6 @@ class MusicCog(commands.Cog):
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
         """
-
         # Если передали контекс обновить его иначе оставить старый
         if not ctx is None:
             self.ctx = ctx
@@ -69,10 +95,10 @@ class MusicCog(commands.Cog):
 
         # Сделать проверку и запуск музыки из очереди
         song_list_len = len(self.song_list)
-        if not voice_client.is_playing() and song_list_len:
+        if self.__has_next(voice_client):
             url = self.song_list.pop(0)
             voice_client.loop.create_task(self.__play(self.ctx, url))
-            await ctx.send(f'Песен осталось песен в очереди: {song_list_len}')
+            await ctx.send(f'Песен осталось/Песен в очереди: {song_list_len}')
 
         # Добавляем проверку в цикл событий еще раз
         await sleep(1)
@@ -107,7 +133,7 @@ class MusicCog(commands.Cog):
 
     @commands.command()
     async def join(self, ctx: Context):
-        """ Присоединение в голосовой в чат
+        """ Присоединение в голосовой чат
 
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
@@ -124,7 +150,7 @@ class MusicCog(commands.Cog):
 
     @commands.command()
     async def disconnect(self, ctx: Context):
-        """ Отключение из голосового в чат
+        """ Отключение из голосового чата
 
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
@@ -177,6 +203,8 @@ class MusicCog(commands.Cog):
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
         self.song_list.append(url)
+        if voice_client.is_playing():
+            await ctx.send(f'Песен осталось/Песен в очереди: {len(self.song_list)}')
 
     @commands.command()
     async def pause(self, ctx: Context):
