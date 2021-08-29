@@ -17,7 +17,7 @@ class MusicCog(commands.Cog):
         self.is_play = False
 
     def __has_next(self, voice_client: VoiceClient) -> bool:
-        """Проверка переключения музыки
+        """ Проверка переключения музыки
 
         Args:
             voice_client (VoiceClient): голосовой клиент
