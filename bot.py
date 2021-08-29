@@ -4,6 +4,7 @@ import about_configuration
 from discord.ext import commands
 from dotenv import load_dotenv
 from os import environ
+from discord_components import DiscordComponents
 
 
 load_dotenv()
@@ -17,6 +18,11 @@ bot = commands.Bot(
     command_prefix='!',
     activity=activity
 )
+
+
+@bot.event
+async def on_ready():
+    DiscordComponents(bot)
 
 for i in range(len(cogs)):
     cogs[i].setup(bot)
