@@ -24,6 +24,13 @@ bot = commands.Bot(
 async def on_ready():
     DiscordComponents(bot)
 
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, discord.ext.commands.errors.CommandNotFound):
+        await ctx.send("Такой команды не существует, прости 😓")
+
+
 for i in range(len(cogs)):
     cogs[i].setup(bot)
 
