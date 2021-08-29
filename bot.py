@@ -1,12 +1,13 @@
 import discord
 import music_configuration
+import about_configuration
 from discord.ext import commands
 from dotenv import load_dotenv
 from os import environ
 
 
 load_dotenv()
-cogs = [music_configuration]
+cogs = [music_configuration, about_configuration]
 
 activity = discord.Activity(
     name='Music by Sathelo | !help',
