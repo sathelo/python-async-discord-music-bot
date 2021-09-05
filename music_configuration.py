@@ -61,13 +61,7 @@ class MusicCog(commands.Cog):
         if voice_client is None:
             return
 
-        if self.timeout_disconnect is None:
-            self.timeout_disconnect = time.time()
-
-        timeout = time.time() - self.timeout_disconnect
-        if time.time() - self.timeout_disconnect > TIMEOUT_DISCONNECT_SECOND:
-            self.timeout_disconnect = None
-            await voice_client.disconnect()
+        await voice_client.disconnect()
 
     async def __play(self, ctx: Context, url: str):
         """ Запуск youtube клипа
@@ -151,6 +145,14 @@ class MusicCog(commands.Cog):
         if (len(users_ids) > 1):
             return
 
+        if self.timeout_disconnect is None:
+            self.timeout_disconnect = time.time()
+
+        timeout = time.time() - self.timeout_disconnect
+        if not timeout > TIMEOUT_DISCONNECT_SECOND:
+            return
+
+        self.timeout_disconnect = None
         ctx.voice_client.loop.create_task(self.__disconnect(self.context))
 
     async def __check_access(self, ctx: Context) -> bool:
