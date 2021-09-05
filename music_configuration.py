@@ -143,6 +143,7 @@ class MusicCog(commands.Cog):
         """
         users_ids = list(ctx.voice_client.channel.voice_states.keys())
         if (len(users_ids) > 1):
+            self.timeout_disconnect = None
             return
 
         if self.timeout_disconnect is None:
