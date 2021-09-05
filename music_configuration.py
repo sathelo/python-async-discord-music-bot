@@ -66,6 +66,7 @@ class MusicCog(commands.Cog):
 
         timeout = time.time() - self.timeout_disconnect
         if time.time() - self.timeout_disconnect > TIMEOUT_DISCONNECT_SECOND:
+            self.timeout_disconnect = None
             await voice_client.disconnect()
 
     async def __play(self, ctx: Context, url: str):
