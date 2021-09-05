@@ -6,6 +6,10 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from youtube_dl.utils import DownloadError
 from asyncio import sleep
+import time
+
+
+TIMEOUT_DISCONNECT_SECOND = 60
 
 
 class MusicCog(commands.Cog):
@@ -13,8 +17,9 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.song_list = []
         self.context = None
-        self.is_playlist = False
+        self.is_loop = False
         self.is_play = False
+        self.timeout_disconnect: int = None
 
     def __has_next(self, voice_client: VoiceClient) -> bool:
         """ Проверка переключения музыки
@@ -43,6 +48,26 @@ class MusicCog(commands.Cog):
 
         return True
 
+    async def __disconnect(self, ctx: Context):
+        """ Отключение из голосового чата
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        self.is_loop = False
+        self.song_list = []
+        voice_client: VoiceClient = ctx.voice_client
+
+        if voice_client is None:
+            return
+
+        if self.timeout_disconnect is None:
+            self.timeout_disconnect = time.time()
+
+        timeout = time.time() - self.timeout_disconnect
+        if time.time() - self.timeout_disconnect > TIMEOUT_DISCONNECT_SECOND:
+            await voice_client.disconnect()
+
     async def __play(self, ctx: Context, url: str):
         """ Запуск youtube клипа
 
@@ -65,12 +90,38 @@ class MusicCog(commands.Cog):
                 source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
                 voice_client.play(source)
                 await ctx.send('Сейчас играет - ' + info.get('title'))
-                if not self.is_playlist:
-                    await self.__playlist(ctx)
         except:
             raise
         finally:
             self.is_play = False
+
+    async def __loop(self, ctx: Context):
+        """ Цикл событий
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        # Если передали контекс обновить его иначе оставить старый
+        if not ctx is None:
+            self.context = ctx
+
+        # Если контекста нет, то выходим
+        if self.context is None:
+            return
+
+        # Если нет voice_client, то выходим
+        voice_client: VoiceClient = self.context.voice_client
+        if not isinstance(voice_client, VoiceClient):
+            return
+
+        voice_client: VoiceClient = self.context.voice_client
+
+        voice_client.loop.create_task(self.__playlist(self.context))
+        voice_client.loop.create_task(self.__iamalon(self.context))
+
+        # Добавляем проверку в цикл событий еще раз
+        await sleep(1)
+        voice_client.loop.create_task(self.__loop(self.context))
 
     async def __playlist(self, ctx: Context = None):
         """ Обработчик плейлиста
@@ -78,31 +129,28 @@ class MusicCog(commands.Cog):
         Args:
             ctx (Context): Представляет контекст, в котором вызывается команда.
         """
-        # Если передали контекс обновить его иначе оставить старый
-        if not ctx is None:
-            self.ctx = ctx
+        voice_client: VoiceClient = self.context.voice_client
 
-        # Если контекста нет, то выходим
-        if self.ctx is None:
-            return
-
-        # Если нет voice_client, то выходим
-        voice_client: VoiceClient = self.ctx.voice_client
-        if not isinstance(voice_client, VoiceClient):
-            return
-
-        self.is_playlist = True
+        self.is_loop = True
 
         # Сделать проверку и запуск музыки из очереди
         song_list_len = len(self.song_list)
         if self.__has_next(voice_client):
             url = self.song_list.pop(0)
-            voice_client.loop.create_task(self.__play(self.ctx, url))
+            voice_client.loop.create_task(self.__play(self.context, url))
             await ctx.send(f'Песен осталось/Песен в очереди: {song_list_len}')
 
-        # Добавляем проверку в цикл событий еще раз
-        await sleep(1)
-        voice_client.loop.create_task(self.__playlist(self.ctx))
+    async def __iamalon(self, ctx):
+        """ Обработчик одиночества
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        users_ids = list(ctx.voice_client.channel.voice_states.keys())
+        if (len(users_ids) > 1):
+            return
+
+        ctx.voice_client.loop.create_task(self.__disconnect(self.context))
 
     async def __check_access(self, ctx: Context) -> bool:
         """ Проверка доступа к командам
@@ -147,24 +195,8 @@ class MusicCog(commands.Cog):
             return
         channel = ctx.author.voice.channel
         await channel.connect()
-
-    @commands.command()
-    async def disconnect(self, ctx: Context):
-        """ Отключение из голосового чата
-
-        Args:
-            ctx (Context): Представляет контекст, в котором вызывается команда.
-        """
-        self.is_playlist = False
-        self.song_list = []
-        name = await self.__get_username(ctx)
-        voice_client: VoiceClient = ctx.voice_client
-        if not await self.__check_access(ctx):
-            return
-        if voice_client is None:
-            await ctx.send(f"{name} я уже отключен, в глазки долбишься ⁉")
-            return
-        await voice_client.disconnect()
+        if not self.is_loop:
+            await self.__loop(ctx)
 
     @commands.command()
     async def play(self, ctx: Context, url: str):
