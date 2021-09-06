@@ -224,6 +224,21 @@ class MusicCog(commands.Cog):
             await ctx.send(f'{name} ты не передал сыллку ⁉')
 
     @commands.command()
+    async def disconnect(self, ctx: Context):
+        """ Отключения из голосового чата
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
+        name = await self.__get_username(ctx)
+        voice_client: VoiceClient = ctx.voice_client
+        if not await self.__check_access(ctx):
+            return
+        if voice_client is None:
+            await ctx.send(f"{name} я уже отключен, в глазки долбишься ⁉")
+        voice_client.loop.create_task(self.__disconnect(ctx))
+
+    @commands.command()
     async def add_song(self, ctx: Context, url: str):
         """ Добавление youtube клипа в очередь
 
