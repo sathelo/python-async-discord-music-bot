@@ -217,6 +217,9 @@ class MusicCog(commands.Cog):
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
             return
+        if url.count("list"):
+            await ctx.send("Ой-Ой. Кажется вы скинули сборник песен ⁉")
+            return
         voice_client.stop()
         try:
             voice_client.loop.create_task(self.__play(ctx, url))
@@ -252,6 +255,9 @@ class MusicCog(commands.Cog):
             return
         if voice_client is None:
             await ctx.send(f'{name} будь добр напиши !join ⁉')
+            return
+        if url.count("list"):
+            await ctx.send("Ой-Ой. Кажется вы скинули сборник песен ⁉")
             return
         self.song_list.append(url)
         if voice_client.is_playing():
