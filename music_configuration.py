@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from youtube_dl.utils import DownloadError
 from asyncio import sleep
+from time import time
 import time
 
 
@@ -20,6 +21,7 @@ class MusicCog(commands.Cog):
         self.is_loop = False
         self.is_play = False
         self.timeout_disconnect: int = None
+        self.start_time = time()
 
     def __has_next(self, voice_client: VoiceClient) -> bool:
         """ Проверка переключения музыки
@@ -32,6 +34,7 @@ class MusicCog(commands.Cog):
         """
         # Если музыка играет
         if voice_client.is_playing():
+            self.start_time = time()
             return False
 
         # Если пустой список песен
@@ -72,6 +75,7 @@ class MusicCog(commands.Cog):
         """
         while self.is_play:
             await sleep(0.5)
+        self.start_time = time()
         self.is_play = True
         voice_client: VoiceClient = ctx.voice_client
         voice_client.stop()
@@ -98,6 +102,7 @@ class MusicCog(commands.Cog):
         """
         # Если передали контекс обновить его иначе оставить старый
         if not ctx is None:
+            self.start_time = time()
             self.context = ctx
 
         # Если контекста нет, то выходим
@@ -108,6 +113,11 @@ class MusicCog(commands.Cog):
         voice_client: VoiceClient = self.context.voice_client
         if not isinstance(voice_client, VoiceClient):
             return
+
+        # Если не взаимодействуют с ботом, то выходим
+        if isinstance(voice_client, VoiceClient) and voice_client.is_connected():
+            if time() - self.start_time >= 60:
+                await voice_client.disconnect()
 
         voice_client: VoiceClient = self.context.voice_client
 
@@ -165,6 +175,7 @@ class MusicCog(commands.Cog):
         Returns:
             bool: True - если пользователь в голосов чате
         """
+        self.start_time = time()
         name = await self.__get_username(ctx)
         if ctx.author.voice:
             return True
