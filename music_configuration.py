@@ -7,7 +7,6 @@ from discord.ext.commands import Context
 from youtube_dl.utils import DownloadError
 from asyncio import sleep
 from time import time
-import time
 
 
 TIMEOUT_DISCONNECT_SECOND = 60
@@ -102,7 +101,6 @@ class MusicCog(commands.Cog):
         """
         # Если передали контекс обновить его иначе оставить старый
         if not ctx is None:
-            self.start_time = time()
             self.context = ctx
 
         # Если контекста нет, то выходим
@@ -116,8 +114,8 @@ class MusicCog(commands.Cog):
 
         # Если не взаимодействуют с ботом, то выходим
         if isinstance(voice_client, VoiceClient) and voice_client.is_connected():
-            if time() - self.start_time >= 60:
-                await voice_client.disconnect()
+            if time() - self.start_time >= 60*5:
+                return await voice_client.disconnect()
 
         voice_client: VoiceClient = self.context.voice_client
 
@@ -157,9 +155,9 @@ class MusicCog(commands.Cog):
             return
 
         if self.timeout_disconnect is None:
-            self.timeout_disconnect = time.time()
+            self.timeout_disconnect = time()
 
-        timeout = time.time() - self.timeout_disconnect
+        timeout = time() - self.timeout_disconnect
         if not timeout > TIMEOUT_DISCONNECT_SECOND:
             return
 
