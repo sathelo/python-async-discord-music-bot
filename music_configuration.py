@@ -237,6 +237,12 @@ class MusicCog(commands.Cog):
 
     @commands.command()
     async def p(self, ctx: Context, url: str):
+        """ Запуск youtube клипа по ссылке
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+            url (str): Ссылка на youtube клип
+        """
         await self.play(ctx, url)
 
     @commands.command()
@@ -278,6 +284,12 @@ class MusicCog(commands.Cog):
 
     @commands.command()
     async def add(self, ctx: Context, url: str):
+        """ Добавление youtube клипа в очередь
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+            url (str): Ссылка на youtube клип
+        """
         await self.add_song(ctx, url)
 
     @commands.command()
@@ -342,6 +354,11 @@ class MusicCog(commands.Cog):
 
     @commands.command()
     async def s(self, ctx: Context):
+        """ Пропустить youtube клип
+
+        Args:
+            ctx (Context): Представляет контекст, в котором вызывается команда.
+        """
         await self.skip(ctx)
 
 
