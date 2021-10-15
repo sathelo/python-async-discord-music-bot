@@ -238,6 +238,10 @@ class MusicCog(commands.Cog):
             await ctx.send(f'{name} ты не передал сыллку ⁉')
 
     @commands.command()
+    async def p(self, ctx: Context, url: str):
+        await self.play(ctx, url)
+
+    @commands.command()
     async def disconnect(self, ctx: Context):
         """ Отключения из голосового чата
 
@@ -273,6 +277,10 @@ class MusicCog(commands.Cog):
         self.song_list.append(url)
         if voice_client.is_playing():
             await ctx.send(f'Песен осталось/Песен в очереди: {len(self.song_list)}')
+
+    @commands.command()
+    async def add(self, ctx: Context, url: str):
+        await self.add_song(ctx, url)
 
     @commands.command()
     async def pause(self, ctx: Context):
@@ -333,6 +341,10 @@ class MusicCog(commands.Cog):
             return
         voice_client.stop()
         await ctx.send(f"{name} скипнул песню 💨")
+
+    @commands.command()
+    async def s(self, ctx: Context):
+        await self.skip(ctx)
 
 
 def setup(bot):
