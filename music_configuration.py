@@ -192,8 +192,7 @@ class MusicCog(commands.Cog):
         """
         return ctx.author.display_name
 
-    @commands.command()
-    async def join(self, ctx: Context):
+    async def __join(self, ctx: Context) -> VoiceClient:
         """ Присоединение в голосовой чат
 
         Args:
@@ -210,6 +209,7 @@ class MusicCog(commands.Cog):
         await channel.connect()
         if not self.is_loop:
             await self.__loop(ctx)
+        return ctx.voice_client
 
     @commands.command()
     async def play(self, ctx: Context, url: str):
@@ -224,8 +224,7 @@ class MusicCog(commands.Cog):
         if not await self.__check_access(ctx):
             return
         if voice_client is None:
-            await ctx.send(f'{name} будь добр напиши !join ⁉')
-            return
+            voice_client = await self.__join(ctx)
         if url.count("list"):
             await ctx.send("Ой-Ой. Кажется вы скинули сборник песен ⁉")
             return
@@ -273,8 +272,7 @@ class MusicCog(commands.Cog):
         if not await self.__check_access(ctx):
             return
         if voice_client is None:
-            await ctx.send(f'{name} будь добр напиши !join ⁉')
-            return
+            voice_client = await self.__join(ctx)
         if url.count("list"):
             await ctx.send("Ой-Ой. Кажется вы скинули сборник песен ⁉")
             return
@@ -304,8 +302,7 @@ class MusicCog(commands.Cog):
         if not await self.__check_access(ctx):
             return
         if voice_client is None:
-            await ctx.send(f'{name} будь добр напиши !join ⁉')
-            return
+            voice_client = await self.__join(ctx)
         if not voice_client.is_playing():
             await ctx.send(f"{name} я сейчас не играю музыку ⁉")
             return
@@ -324,8 +321,7 @@ class MusicCog(commands.Cog):
         if not await self.__check_access(ctx):
             return
         if voice_client is None:
-            await ctx.send(f'{name} будь добр напиши !join ⁉')
-            return
+            voice_client = await self.__join(ctx)
         if not voice_client.is_paused():
             await ctx.send(f"{name} ты сначала поставь на паузу, а потом меня вызывай ⁉")
             return
@@ -344,8 +340,7 @@ class MusicCog(commands.Cog):
         if not await self.__check_access(ctx):
             return
         if voice_client is None:
-            await ctx.send(f'{name} будь добр напиши !join ⁉')
-            return
+            voice_client = await self.__join(ctx)
         if isinstance(voice_client, VoiceClient) and not voice_client.is_playing():
             await ctx.send(f'{name} песен больше не осталось, может скипнуть тебя ⁉')
             return
